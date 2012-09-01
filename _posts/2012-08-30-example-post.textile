@@ -15,27 +15,29 @@ h3. Via a new object
 
 This is the approach iOS uses for "UIAlertView":UIAlertView, and that Android uses for "Toasts":Toast and "Dialogs":Dialog.  In each case, you create an object, and then call @show@ on it.
 
-<div class="tabber" title="iOS UIAlertView">
+<div class="tabber">
+<div class="tabbertab" title="iOS UIAlertView">
 <code class="brush:objc">
     UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Announcement" message: @"Message..." delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
     [alertView show];
 </code>
 </div>
 
-<div class="tabber" title="Android toast">
+<div class="tabbertab" title="Android toast">
 <code class="brush:java">
     Toast toast = Toast.makeText(context, "Title", Toast.LENGTH_SHORT);
     toast.show();
 </code>
 </div>
 
-<div class="tabber" title="Android dialog">
+<div class="tabbertab" title="Android dialog">
 <code class="brush:java">
     AlertDialog alert = new AlertDialog.Builder(context).setTitle("Title").create();
     alert.show();
 </code>
 </div>
 
+<div class="tabbertab" title="GTK dialog">
 <code class="brush:c">
   GtkWidget *dialog, *label, *content_area;
   GtkWidget *dialog = gtk_dialog_new_with_buttons ("Message",
@@ -55,15 +57,20 @@ This is the approach iOS uses for "UIAlertView":UIAlertView, and that Android us
      gtk_container_add (GTK_CONTAINER (content_area), label);
      gtk_widget_show_all (dialog);
 </code>
+</div>
 
+<div class="tabbertab" title="QT dialog">
 <code class="brush:cpp">
-  QMessageBox msgBox;
+   QMessageBox msgBox;
    msgBox.setText("The document has been modified.");
    msgBox.setInformativeText("Do you want to save your changes?");
    msgBox.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
    msgBox.setDefaultButton(QMessageBox::Save);
    int ret = msgBox.exec();
 </code>
+</div>
+
+</div>
 
 THIS IS WRONG because clients are directly instantiating the dialog objects, so there is no direct way to mock out the dialogs under test.  This can be worked around in iOS by creating a test helper "category":category that overrides the default implementation of @show@ so that calls to it can be inspected.  And it can be worked around on Android by using "Robolectric":robolectric (which replaces the _entire Android framework_ with mock objects).  Unfortunately neither of these frameworks makes this easy to test.
 
