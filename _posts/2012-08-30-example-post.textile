@@ -16,27 +16,27 @@ h3. Via a new object
 This is the approach iOS uses for "UIAlertView":UIAlertView, and that Android uses for "Toasts":Toast and "Dialogs":Dialog.  In each case, you create an object, and then call @show@ on it.
 
 <div class="tabber" title="iOS UIAlertView">
-<code>
+<code class="brush:objc">
     UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Announcement" message: @"Message..." delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
     [alertView show];
 </code>
 </div>
 
 <div class="tabber" title="Android toast">
-<code>
+<code class="brush:java">
     Toast toast = Toast.makeText(context, "Title", Toast.LENGTH_SHORT);
     toast.show();
 </code>
 </div>
 
 <div class="tabber" title="Android dialog">
-<code>
+<code class="brush:java">
     AlertDialog alert = new AlertDialog.Builder(context).setTitle("Title").create();
     alert.show();
 </code>
 </div>
 
-{% highlight %}
+<code class="brush:c">
   GtkWidget *dialog, *label, *content_area;
   GtkWidget *dialog = gtk_dialog_new_with_buttons ("Message",
                                            main_application_window,
@@ -54,9 +54,9 @@ This is the approach iOS uses for "UIAlertView":UIAlertView, and that Android us
      /* Add the label, and show everything we've added to the dialog. */
      gtk_container_add (GTK_CONTAINER (content_area), label);
      gtk_widget_show_all (dialog);
-{% end %}
+</code>
 
-<code>
+<code class="brush:cpp">
   QMessageBox msgBox;
    msgBox.setText("The document has been modified.");
    msgBox.setInformativeText("Do you want to save your changes?");
@@ -72,7 +72,7 @@ h3. Via a static method
 
 This is the approach used by Java Swing for showing dialogs ("JOptionPane":JOptionPane).  In this case, simply call a static method.
 
-<code>
+<code class="brush:java">
   JOptionPane.showMessageDialog(null, "Message...", "Title", JOptionPane.WARNING_MESSAGE);
 </code>
 
