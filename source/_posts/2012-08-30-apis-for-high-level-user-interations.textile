@@ -1,0 +1,180 @@
+---
+published: false
+layout: post
+title: APIs for high-level user interactions
+date: 2012-08-30 5:59
+comments: true
+external-url:
+categories:
+---
+
+Working on "uilayer":uilayer, I've finally reached the point where I need to prompt for user input.  The use case is simple for a menu that presents some debugging options, so the look and feel of the interaction isn't important yet, but it's time to start designing the API.
+
+h2. Initiating the interaction
+
+The first question is how to initiate the interaction.  There are a few patterns that are commonly used:
+
+h3. Via a new object
+
+This is the approach iOS uses for "UIAlertView":UIAlertView, and that Android uses for "Toasts":Toast and "Dialogs":Dialog.  In each case, you create an object, and then call @show@ on it.
+
+<div class="tabber">
+<div class="tabbertab" title="iOS UIAlertView">
+{% codeblock lang:objc %}
+    UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Announcement" message: @"Message..." delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+    [alertView show];
+{% endcodeblock %}
+</div>
+
+<div class="tabbertab" title="Android toast">
+{% codeblock lang:java %}
+    Toast toast = Toast.makeText(context, "Title", Toast.LENGTH_SHORT);
+    toast.show();
+{% endcodeblock %}
+</div>
+
+<div class="tabbertab" title="Android dialog">
+{% codeblock lang:java %}
+    AlertDialog alert = new AlertDialog.Builder(context).setTitle("Title").create();
+    alert.show();
+{% endcodeblock %}
+</div>
+
+<div class="tabbertab" title="GTK dialog">
+{% codeblock lang:c %}
+  GtkWidget *dialog, *label, *content_area;
+  GtkWidget *dialog = gtk_dialog_new_with_buttons ("Message",
+                                           main_application_window,
+                                           GTK_DIALOG_DESTROY_WITH_PARENT,
+                                           GTK_STOCK_OK,
+                                           GTK_RESPONSE_NONE,
+                                           NULL);
+     content_area = gtk_dialog_get_content_area (GTK_DIALOG (dialog));
+     label = gtk_label_new (message);
+     /* Ensure that the dialog box is destroyed when the user responds. */
+     g_signal_connect_swapped (dialog,
+                               "response",
+                               G_CALLBACK (gtk_widget_destroy),
+                               dialog);
+     /* Add the label, and show everything we've added to the dialog. */
+     gtk_container_add (GTK_CONTAINER (content_area), label);
+     gtk_widget_show_all (dialog);
+{% endcodeblock %}
+</div>
+
+<div class="tabbertab" title="QT dialog">
+<code class="brush:cpp">
+   QMessageBox msgBox;
+   msgBox.setText("The document has been modified.");
+   msgBox.setInformativeText("Do you want to save your changes?");
+   msgBox.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+   msgBox.setDefaultButton(QMessageBox::Save);
+   int ret = msgBox.exec();
+</code>
+</div>
+
+</div>
+
+THIS IS WRONG because clients are directly instantiating the dialog objects, so there is no direct way to mock out the dialogs under test.  This can be worked around in iOS by creating a test helper "category":category that overrides the default implementation of @show@ so that calls to it can be inspected.  And it can be worked around on Android by using "Robolectric":robolectric (which replaces the _entire Android framework_ with mock objects).  Unfortunately neither of these frameworks makes this easy to test.
+
+
+h3. Via a static method
+
+This is the approach used by Java Swing for showing dialogs ("JOptionPane":JOptionPane).  In this case, simply call a static method.
+
+{% codeblock lang:java %}
+  JOptionPane.showMessageDialog(null, "Now back to me", "Look at your man", JOptionPane.WARNING_MESSAGE);
+{% endcodeblock %}
+
+THIS IS WRONG because, again, there is no way to mock out the static method call under test.  This is generally worked around by creating a non-static "facade":facade that can be mocked.  Also of interest are libraries like "FEST-Swing":fest-swing, which rely on some underhanded interactions with the framework and that make tests very slow since they create real windows (this is comparable to "Selenium":selenium for web testing).
+
+h3. Via the superclass
+
+This is the approach used by iOS for presenting modal interactions.  The is generally used alongside creating a new object (see above), which you then 
+
+THIS IS WRONG because you require that the client code be in a particular class.  This hinders refactoring, since if you want to move the code to another class, you must pass along a reference to the context.  This can be partially simplified by using a dependency injection framework that has some type of context-scoped containers, but such setups can be complex and fragile (for Android, "roboguice's @@ContextScoped@":contextscoped; for iOS, I believe "Blindside":blindside has such a capability, but I'm not sure how to use it).
+
+h3. Via a dependency
+
+A correct way to initiate a complex user interaction would be to call a method on an object that can be injected.
+
+h2. Getting the results
+
+h3. Blocking
+
+This generally means the call is modal, and this is how the static "JOptionPane":JOptionPane methods work in Java Swing.
+
+{% codeblock lang:java %}
+    String response = JOptionPane.showInputDialog("What do cows drink?");
+{% endcodeblock %}
+
+THIS IS WRONG because the API is limiting the design of the user experience.  Although the API is simple and direct to use, it forces the workflow of the application to be synchronous and modal.
+
+h3. Providing a delegate
+
+This is the approach used in Cocoa and iOS.  A "delegate object":DelegatePattern is provided (in iOS this is most often @self@) which receives a specific method call when the user makes a selection.
+
+{% codeblock lang:objc %}
+    @interface ThisClass : NSObject <UIAlertViewDelegate>
+    @end
+    
+    @implementation ThisClass
+    
+    - (void)main {
+      UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Announcement" message: @"Message..." delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"OK"];
+      [alertView show]; // This is an asynchronous call
+    }
+    
+    - (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
+        NSString *response = (buttonIndex == 0) ? @"Cancel" : @"Okay";
+    }
+    
+    @end
+{% endcodeblock %}
+
+h3. Providing a callback
+
+h3. Providing a closure
+
+{% codeblock lang:java %}
+    JColorChooser chooser = new JColorChooser(Color.WHITE);
+    JDialog dialog = JColorChooser.createDialog(null, "Title", false, chooser, new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        Color response = chooser.getColor();
+      }
+    }, null);
+{% endcodeblock %}
+
+h3. Weird
+
+{% codeblock lang:java %}
+  public class ThisClass extends Activity {
+    public void doStuff() {
+      Intent intent=new Intent(IntentsDemo2.this,Activity2.class);
+      intent.putExtra("ComingFrom", "Activity 1");
+      final int result=1;
+      startActivityForResult(intent, result);
+    }
+    
+    @Override
+    public void onActivityResult(int requestCode,int resultCode,Intent data)
+    {
+      super.onActivityResult(requestCode, resultCode, data);
+      String extraData=data.getStringExtra("ComingFrom"));
+    }
+  }
+{% endcodeblock %}
+
+
+[uilayer]http://github.com/avh4/uilayer
+[UIAlertView]http://developer.apple.com/library/ios/#DOCUMENTATION/UIKit/Reference/UIAlertView_Class/UIAlertView/UIAlertView.html
+[Toast]http://developer.android.com/guide/topics/ui/notifiers/toasts.html
+[Dialog]http://developer.android.com/guide/topics/ui/dialogs.html
+[category]http://developer.apple.com/library/ios/#documentation/cocoa/conceptual/objectivec/chapters/occategories.html
+[robolectric]http://pivotal.github.com/robolectric/
+[contextscoped]https://groups.google.com/forum/?fromgroups=#!topic/roboguice/y2QZ_FO9_pQ
+[blindside]https://github.com/jbsf/blindside
+[facade]http://en.wikipedia.org/wiki/Facade_pattern
+[fest-swing]http://docs.codehaus.org/display/FEST/Swing+Module
+[selenium]http://seleniumhq.org/
+[DelegatePattern]http://en.wikipedia.org/wiki/Delegation_pattern
