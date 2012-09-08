@@ -1,0 +1,74 @@
+---
+published: false
+layout: post
+title: "Dependency Injection"
+date: 2012-09-07 22:27
+comments: true
+categories: 
+---
+
+First, let's be clear.  "Dependency Injection":dependency-injection is simply a technique, and a very common one.  If you've written any kind of software, you've most certainly used it in one form or another.  It is a technique used to implement the "Dependency Inversion Principle":http://en.wikipedia.org/wiki/Dependency_inversion_principle.  The main alternative to dependency injection is the "service locator pattern":http://en.wikipedia.org/wiki/Service_locator_pattern.
+
+Martin Fowler discusses Dependency Injection vs Service Locator http://martinfowler.com/articles/injection.html#UsingAServiceLocator
+
+{% blockquote Martin Fowler http://martinfowler.com/articles/injection.html Inversion of Control Containers and the Dependency Injection pattern %}
+Inversion of control is a common characteristic of frameworks, so saying that these lightweight containers are special because they use inversion of control is like saying my car is special because it has wheels.
+{% endblockquote %}
+
+But when dependency injection is discussed, often the topic is really _dependency injection frameworks_.
+
+Something to note before we continue is that _dependency injection frameworks_ are really a sort of hybrid between the Dependency Injection Pattern and the Service Locator Pattern.  These frameworks take classes that follow the Dependency Injection Pattern (which says that classes are _given_ what they need) and through reflection and annotations, allow the classes to _ask_ for what they need (which is the main purpose of the Service Locator Pattern).
+
+Dependency injection frameworks typically do two things wrong:  
+
+h3. Creating an unnecessary domain language
+
+Configuration for "Guice":guice is unnecessarily complication.  
+A configuration is called a "module", which is a vague and overloaded term.  
+
+{% codeblock lang:java %}
+{% endcodeblock %}
+
+The way you specify bindings is through an overly-clever but still confusing fluent API:
+
+{% codeblock lang:java %}
+    // A
+    bind(LaundryService.class).to(DummyLandryService.class).in(Scopes.SINGLETON);
+    
+    // B
+    bind(LaundryService.class).to(DummyLandryService.class);
+    bind(DummyLaundryService.class).in(Scopes.SINGLETON);
+{% endcodeblock %}
+
+In the above example, can you tell the difference between A and B?  Even if you're familiar with Guice, it still probably took you a second to think through how they differ in behavior.  And yes, they behave very differently.
+
+I think "PicoContainer":picocontainer got this one right.  It uses no annotations, and configuring your bindings is simple: You create a container, and you add things you want to the container.
+
+In the A/B example with Guice above, you probably wanted B (where DummyLaundryService is actually a singleton--A would actually give you two instances of it).  Here's how you set it up:
+
+{% codeblock lang:java %}
+    container.addComponent(new DummyLaundryService());
+{% endcodeblock %}
+
+// and if you really did want B
+{% codeblock lang:java %}
+    container.addComponent(DummyLaundryService.class, new DummyLaundryService());
+    container.addComponent(LaundryService.class, new DummyLaundryService());
+{% endcodeblock %}
+(and hey, you can easily read in the code exactly what is happening--two instances are being created)
+
+
+h3. Encouraging bad architecture
+
+A bigger problem with dependency injection frameworks is that it makes it easy to do bad things.  The major benefit of using dependency injection is that it uses the inversion of control principle to make classes in your code more loosely coupled.  That's great!  It makes 
+"unit testing":unit-test your classes easy, it makes your code base more maintainable (), and it encourages you to write your classes in a way that 
+
+<!-- h3. Following two patterns
+
+As noted above, using a dependency injection framework is really a combination of two patterns, with  -->
+
+
+[guice]http://code.google.com/p/google-guice/
+[picocontainer]http://picocontainer.codehaus.org/
+[unit-test]{{ root_url }}/definitions.html#unit-test
+[dependency-injection]http://en.wikipedia.org/wiki/Dependency_Injection
